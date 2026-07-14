@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live QR Code Generator</title>
+    <!-- 引入功能更廣的 QR Code 核心庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+        }
+        /* 語言切換器 */
+        .lang-selector {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            width: auto;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e0;
+            background: #fff;
+            cursor: pointer;
+        }
+        h2 {
+            margin-top: 0;
+            text-align: center;
+            color: #1a202c;
+            padding-right: 80px; /* 留空間給語言選單 */
+        }
+        /* 分頁標籤樣式 */
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        .tab-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 8px;
+            background: #edf2f7;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            color: #4a5568;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: #3182ce;
+            color: white;
+        }
+        /* 表單與輸入組 */
+        .form-panel {
+            display: none;
+        }
+        .form-panel.active {
+            display: block;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #4a5568;
+            font-size: 14px;
+        }
+        input[type="text"], input[type="tel"], input[type="email"], textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        textarea {
+            resize: vertical;
+            height: 80px;
+        }
+        .color-pickers {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .color-item {
+            flex: 1;
+        }
+        input[type="color"] {
+            width: 100%;
+            height: 40px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+        /* 預覽與按鈕 */
+        #qrcode-box {
+            margin: 25px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 220px;
+            background: #f7fafc;
+            border: 2px dashed #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        .download-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #38a169;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .download-btn:hover {
+            background-color: #2f855a;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 手動語言切換選單 -->
+    <select id="lang-select" class="lang-selector" onchange="changeLanguage(this.value)">
+        <option value="zh-TW">繁體中文</option>
+        <option value="zh-CN">简体中文</option>
+        <option value="en">English</option>
+    </select>
+
+    <h2 data-i18n="title">QR Code 產生器</h2>
+    
+    <!-- 功能分頁切換 -->
+    <div class="tabs">
+        <button id="tab-url" class="tab-btn active" onclick="switchTab('url', event)" data-i18n="tab_url">網址</button>
+        <button id="tab-text" class="tab-btn" onclick="switchTab('text', event)" data-i18n="tab_text">純文字</button>
+        <button id="tab-email" class="tab-btn" onclick="switchTab('email', event)" data-i18n="tab_email">Email</button>
+        <button id="tab-sms" class="tab-btn" onclick="switchTab('sms', event)" data-i18n="tab_sms">簡訊</button>
+        <button id="tab-tel" class="tab-btn" onclick="switchTab('tel', event)" data-i18n="tab_tel">電話</button>
+        <button id="tab-wifi" class="tab-btn" onclick="switchTab('wifi', event)" data-i18n="tab_wifi">Wi-Fi</button>
+    </div>
+
+    <!-- 各功能輸入面板 -->
+    <div id="panel-url" class="form-panel active">
+        <div class="input-group">
+            <label data-i18n="label_url">網址 (URL)</label>
+            <input type="text" id="url-val" value="https://google.com" placeholder="https://example.com" oninput="generateQRCode()">
+        </div>
+    </div>
+
+    <div id="panel-text" class="form-panel">
+        <div class="input-group">
+            <label data-i18n="label_text">純文字內容</label>
+            <textarea id="text-val" placeholder="" data-i18n-holder="holder_text" oninput="generateQRCode()"></textarea>
+        </div>
+    </div>
+
+    <div id="panel-email" class="form-panel">
+        <div class="input-group">
+            <label data-i18n="label_email_to">收件人 Email</label>
+            <input type="email" id="email-to" placeholder="example@mail.com" oninput="generateQRCode()">
+        </div>
+        <div class="input-group">
+            <label data-i18n="label_email_sub">郵件主旨 (選填)</label>
+            <input type="text" id="email-sub" placeholder="" data-i18n-holder="holder_email_sub" oninput="generateQRCode()">
+        </div>
+        <div class="input-group">
+            <label data-i18n="label_email_body">郵件內容 (選填)</label>
+            <textarea id="email-body" placeholder="" data-i18n-holder="holder_email_body" oninput="generateQRCode()"></textarea>
+        </div>
+    </div>
+
+    <div id="panel-sms" class="form-panel">
+        <div class="input-group">
+            <label data-i18n="label_sms_num">接收號碼</label>
+            <input type="tel" id="sms-num" placeholder="例如: 0912345678" data-i18n-holder="holder_sms_num" oninput="generateQRCode()">
+        </div>
+        <div class="input-group">
+            <label data-i18n="label_sms_body">簡訊內文</label>
+            <textarea id="sms-body" placeholder="" data-i18n-holder="holder_sms_body" oninput="generateQRCode()"></textarea>
+        </div>
+    </div>
+
+    <div id="panel-tel" class="form-panel">
+        <div class="input-group">
+            <label data-i18n="label_tel">電話號碼</label>
+            <input type="tel" id="tel-num" placeholder="例如: 0912345678" data-i18n-holder="holder_tel" oninput="generateQRCode()">
+        </div>
+    </div>
+
+    <div id="panel-wifi" class="form-panel">
+        <div class="input-group">
+            <label data-i18n="label_wifi_ssid">Wi-Fi 網路名稱 (SSID)</label>
+            <input type="text" id="wifi-name" placeholder="" data-i18n-holder="holder_wifi_ssid" oninput="generateQRCode()">
+        </div>
+        <div class="input-group">
+            <label data-i18n="label_wifi_pass">密碼</label>
+            <input type="text" id="wifi-pass" placeholder="" data-i18n-holder="holder_wifi_pass" oninput="generateQRCode()">
+        </div>
+        <div class="input-group">
+            <label data-i18n="label_wifi_type">加密類型</label>
+            <select id="wifi-type" onchange="generateQRCode()">
+                <option value="WPA">WPA/WPA2</option>
+                <option value="WEP">WEP</option>
+                <option value="nopass" data-i18n="wifi_nopass">無密碼 (開放網路)</option>
+            </select>
+        </div>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+
+    <!-- 客製化控制項 -->
+    <div class="input-group">
+        <label data-i18n="label_logo">嵌入 Logo 圖標 (選填)</label>
+        <input type="file" id="logo-input" accept="image/*" onchange="loadLogo(event)">
+    </div>
+
+    <div class="input-group color-pickers">
+        <div class="color-item">
+            <label data-i18n="label_fg">前景顏色</label>
+            <input type="color" id="fg-color" value="#000000" onchange="generateQRCode()">
+        </div>
+        <div class="color-item">
+            <label data-i18n="label_bg">背景顏色</label>
+            <input type="color" id="bg-color" value="#ffffff" onchange="generateQRCode()">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label data-i18n="label_size">QR Code 輸出尺寸 (px)</label>
+        <select id="size-select" onchange="generateQRCode()">
+            <option value="200">200 x 200</option>
+            <option value="300" selected>300 x 300</option>
+            <option value="400">400 x 400</option>
+            <option value="500">500 x 500</option>
+        </select>
+    </div>
+
+    <!-- QR Code 顯示區域 -->
+    <div id="qrcode-box"></div>
+
+    <!-- 下載按鈕 -->
+    <button class="download-btn" onclick="downloadQRCode()" data-i18n="btn_download">下載 QR Code (PNG)</button>
+</div>
+
+<script>
+    // 語言字典檔
+    const i18nTokens = {
+        'zh-TW': {
+            title: "高級 QR Code 產生器",
+            tab_url: "網址", tab_text: "純文字", tab_email: "Email", tab_sms: "簡訊", tab_tel: "電話", tab_wifi: "Wi-Fi",
+            label_url: "網址 (URL)", label_text: "純文字內容", holder_text: "請輸入您想轉換的文字內容...",
+            label_email_to: "收件人 Email", label_email_sub: "郵件主旨 (選填)", label_email_body: "郵件內容 (選填)",
+            holder_email_sub: "主旨", holder_email_body: "內容",
+            label_sms_num: "接收號碼", label_sms_body: "簡訊內文", holder_sms_num: "例如: 0912345678", holder_sms_body: "請輸入簡訊預設內容...",
+            label_tel: "電話號碼", holder_tel: "例如: 0912345678",
+            label_wifi_ssid: "Wi-Fi 網路名稱 (SSID)", label_wifi_pass: "密碼", label_wifi_type: "加密類型",
+            holder_wifi_ssid: "無線網路名稱", holder_wifi_pass: "Wi-Fi 密碼", wifi_nopass: "無密碼 (開放網路)",
+            label_logo: "嵌入 Logo 圖標 (選填)", label_fg: "前景顏色", label_bg: "背景顏色", label_size: "QR Code 輸出尺寸 (px)",
+            btn_download: "下載 QR Code (PNG)", wait_input: "等待輸入內容...", alert_empty: "請先輸入有效內容產生 QR Code！"
+        },
+        'zh-CN': {
+            title: "高级 QR Code 生成器",
+            tab_url: "网址", tab_text: "纯文本", tab_email: "Email", tab_sms: "短信", tab_tel: "电话", tab_wifi: "Wi-Fi",
+            label_url: "网址 (URL)", label_text: "纯文本内容", holder_text: "请输入您想转换的文本内容...",
+            label_email_to: "收件人 Email", label_email_sub: "邮件主题 (选填)", label_email_body: "邮件内容 (选填)",
+            holder_email_sub: "主题", holder_email_body: "内容",
+            label_sms_num: "接收号码", label_sms_body: "短信正文", holder_sms_num: "例如: 13912345678", holder_sms_body: "请输入短信预设内容...",
+            label_tel: "电话号码", holder_tel: "例如: 13912345678",
+            label_wifi_ssid: "Wi-Fi 网络名称 (SSID)", label_wifi_pass: "密码", label_wifi_type: "加密类型",
+            holder_wifi_ssid: "无线网络名称", holder_wifi_pass: "Wi-Fi 密码", wifi_nopass: "无密码 (开放网络)",
+            label_logo: "嵌入 Logo 图标 (选填)", label_fg: "前景颜色", label_bg: "背景颜色", label_size: "QR Code 输出尺寸 (px)",
+            btn_download: "下载 QR Code (PNG)", wait_input: "等待输入内容...", alert_empty: "请先输入有效内容生成 QR Code！"
+        },
+        'en': {
+            title: "Advanced QR Code Generator",
+            tab_url: "URL", tab_text: "Text", tab_email: "Email", tab_sms: "SMS", tab_tel: "Phone", tab_wifi: "Wi-Fi",
+            label_url: "URL Address", label_text: "Plain Text", holder_text: "Enter text to convert...",
+            label_email_to: "Recipient Email", label_email_sub: "Subject (Optional)", label_email_body: "Body (Optional)",
+            holder_email_sub: "Subject", holder_email_body: "Body text",
+            label_sms_num: "Phone Number", label_sms_body: "SMS Message", holder_sms_num: "e.g., +123456789", holder_sms_body: "Enter text message...",
+            label_tel: "Phone Number", holder_tel: "e.g., +123456789",
+            label_wifi_ssid: "Wi-Fi Network Name (SSID)", label_wifi_pass: "Password", label_wifi_type: "Network Type",
+            holder_wifi_ssid: "Network SSID", holder_wifi_pass: "Wi-Fi Password", wifi_nopass: "No Password (Open)",
+            label_logo: "Embed Logo Icon (Optional)", label_fg: "Foreground Color", label_bg: "Background Color", label_size: "QR Code Size (px)",
+            btn_download: "Download QR Code (PNG)", wait_input: "Waiting for input...", alert_empty: "Please enter valid content first!"
+        }
+    };
+
+    let currentLang = 'en';
+    let currentTab = 'url';
+    let loadedLogoImg = null; 
+
+    // 初始化語言偵測
+    function initLanguage() {
+        // 抓取瀏覽器的主要設定語系 (例如 "zh-TW", "en-US")
+        const browserLang = navigator.language || navigator.userLanguage;
+        
+        if (browserLang.startsWith('zh-TW') || browserLang.startsWith('zh-HK')) {
+            currentLang = 'zh-TW';
+        } else if (browserLang.startsWith('zh')) {
+            currentLang = 'zh-CN';
+        } else {
+            currentLang = 'en'; // 其他語系一律預設英文
+        }
+        
+        // 同步下拉選單的顯示狀態
+        document.getElementById('lang-select').value = currentLang;
+        applyLanguage();
+    }
+
+    // 執行翻譯轉換
+    function applyLanguage() {
+        const tokens = i18nTokens[currentLang];
+        
+        // 1. 翻譯普通文本 (帶有 data-i18n 屬性的標籤)
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (tokens[key]) el.textContent = tokens[key];
+        });
+
+        // 2. 翻譯輸入框提示文字 (帶有 data-i18n-holder 的標籤)
+        document.querySelectorAll('[data-i18n-holder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-holder');
+            if (tokens[key]) el.placeholder = tokens[key];
+        });
+
+        // 切換語言後，刷新 QR Code（主要是更新空白時的提示字眼）
+        generateQRCode();
+    }
+
+    // 手動變更語言
+    function changeLanguage(lang) {
+        currentLang = lang;
+        applyLanguage();
+    }
+
+    // 切換分頁
+    function switchTab(tabName, event) {
+        currentTab = tabName;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+        
+        document.querySelectorAll('.form-panel').forEach(panel => panel.classList.remove('active'));
+        document.getElementById(`panel-${tabName}`).classList.add('active');
+        
+        generateQRCode();
+    }
+
+    // 處理 Logo 上傳
+    function loadLogo(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            loadedLogoImg = null;
+            generateQRCode();
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            loadedLogoImg = new Image();
+            loadedLogoImg.onload = function() {
+                generateQRCode();
+            };
+            loadedLogoImg.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // 組合數據
+    function getFormValue() {
+        switch(currentTab) {
+            case 'url':
+                return document.getElementById('url-val').value.trim();
+            case 'text':
+                return document.getElementById('text-val').value;
+            case 'email':
+                const to = document.getElementById('email-to').value.trim();
+                const sub = encodeURIComponent(document.getElementById('email-sub').value);
+                const body = encodeURIComponent(document.getElementById('email-body').value);
+                return to ? `mailto:${to}?subject=${sub}&body=${body}` : '';
+            case 'sms':
+                const num = document.getElementById('sms-num').value.trim();
+                const smsBody = encodeURIComponent(document.getElementById('sms-body').value);
+                return num ? `smsto:${num}:${smsBody}` : '';
+            case 'tel':
+                const tel = document.getElementById('tel-num').value.trim();
+                return tel ? `tel:${tel}` : '';
+            case 'wifi':
+                const ssid = document.getElementById('wifi-name').value;
+                const pass = document.getElementById('wifi-pass').value;
+                const type = document.getElementById('wifi-type').value;
+                return ssid ? `WIFI:S:${ssid};T:${type};P:${pass};;` : '';
+            default:
+                return '';
+        }
+    }
+
+    // 即時繪製 QR Code
+    function generateQRCode() {
+        const rawText = getFormValue();
+        const qrcodeBox = document.getElementById('qrcode-box');
+        const tokens = i18nTokens[currentLang];
+
+        if (!rawText) {
+            qrcodeBox.innerHTML = `<span style='color: #a0aec0; font-size: 14px;'>${tokens['wait_input']}</span>`;
+            return;
+        }
+
+        const size = parseInt(document.getElementById('size-select').value);
+        const fgColor = document.getElementById('fg-color').value;
+        const bgColor = document.getElementById('bg-color').value;
+
+        const qr = qrcode(0, 'H');
+        qr.addData(rawText);
+        qr.make();
+
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        const moduleCount = qr.getModuleCount();
+        const cellSize = size / moduleCount;
+
+        for (let r = 0; r < moduleCount; r++) {
+            for (let c = 0; c < moduleCount; c++) {
+                ctx.fillStyle = qr.isDark(r, c) ? fgColor : bgColor;
+                ctx.fillRect(Math.round(c * cellSize), Math.round(r * cellSize), Math.ceil(cellSize), Math.ceil(cellSize));
+            }
+        }
+
+        if (loadedLogoImg) {
+            const logoSize = size * 0.22; 
+            const x = (size - logoSize) / 2;
+            const y = (size - logoSize) / 2;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(x - 2, y - 2, logoSize + 4, logoSize + 4); 
+            ctx.drawImage(loadedLogoImg, x, y, logoSize, logoSize);
+        }
+
+        qrcodeBox.innerHTML = "";
+        qrcodeBox.appendChild(canvas);
+    }
+
+    // 下載
+    function downloadQRCode() {
+        const canvas = document.querySelector('#qrcode-box canvas');
+        if (!canvas) {
+            alert(i18nTokens[currentLang]['alert_empty']);
+            return;
+        }
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = 'qrcode.png';
+        link.click();
+    }
+
+    // 網頁載入流程
+    window.onload = function() {
+        initLanguage(); // 1. 偵測並套用語言
+        generateQRCode(); // 2. 畫出預設的 QR Code
+    };
+</script>
+
+</body>
+</html>
