@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live QR Code Generator</title>
-    <!-- 引入功能更廣的 QR Code 核心庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
     <style>
         body {
@@ -27,7 +26,6 @@
             width: 100%;
             position: relative;
         }
-        /* 語言切換器 */
         .lang-selector {
             position: absolute;
             top: 20px;
@@ -44,9 +42,8 @@
             margin-top: 0;
             text-align: center;
             color: #1a202c;
-            padding-right: 80px; /* 留空間給語言選單 */
+            padding-right: 80px;
         }
-        /* 分頁標籤樣式 */
         .tabs {
             display: flex;
             flex-wrap: wrap;
@@ -72,7 +69,6 @@
             background: #3182ce;
             color: white;
         }
-        /* 表單與輸入組 */
         .form-panel {
             display: none;
         }
@@ -118,7 +114,6 @@
             background: none;
             padding: 0;
         }
-        /* 預覽與按鈕 */
         #qrcode-box {
             margin: 25px 0;
             display: flex;
@@ -154,7 +149,6 @@
 <body>
 
 <div class="container">
-    <!-- 手動語言切換選單 -->
     <select id="lang-select" class="lang-selector" onchange="changeLanguage(this.value)">
         <option value="zh-TW">繁體中文</option>
         <option value="zh-CN">简体中文</option>
@@ -163,7 +157,6 @@
 
     <h2 data-i18n="title">QR Code 產生器</h2>
     
-    <!-- 功能分頁切換 -->
     <div class="tabs">
         <button id="tab-url" class="tab-btn active" onclick="switchTab('url', event)" data-i18n="tab_url">網址</button>
         <button id="tab-text" class="tab-btn" onclick="switchTab('text', event)" data-i18n="tab_text">純文字</button>
@@ -173,7 +166,6 @@
         <button id="tab-wifi" class="tab-btn" onclick="switchTab('wifi', event)" data-i18n="tab_wifi">Wi-Fi</button>
     </div>
 
-    <!-- 各功能輸入面板 -->
     <div id="panel-url" class="form-panel active">
         <div class="input-group">
             <label data-i18n="label_url">網址 (URL)</label>
@@ -242,7 +234,6 @@
 
     <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
 
-    <!-- 客製化控制項 -->
     <div class="input-group">
         <label data-i18n="label_logo">嵌入 Logo 圖標 (選填)</label>
         <input type="file" id="logo-input" accept="image/*" onchange="loadLogo(event)">
@@ -269,15 +260,12 @@
         </select>
     </div>
 
-    <!-- QR Code 顯示區域 -->
     <div id="qrcode-box"></div>
 
-    <!-- 下載按鈕 -->
     <button class="download-btn" onclick="downloadQRCode()" data-i18n="btn_download">下載 QR Code (PNG)</button>
 </div>
 
 <script>
-    // 語言字典檔
     const i18nTokens = {
         'zh-TW': {
             title: "高級 QR Code 產生器",
@@ -324,9 +312,7 @@
     let currentTab = 'url';
     let loadedLogoImg = null; 
 
-    // 初始化語言偵測
     function initLanguage() {
-        // 抓取瀏覽器的主要設定語系 (例如 "zh-TW", "en-US")
         const browserLang = navigator.language || navigator.userLanguage;
         
         if (browserLang.startsWith('zh-TW') || browserLang.startsWith('zh-HK')) {
@@ -334,41 +320,34 @@
         } else if (browserLang.startsWith('zh')) {
             currentLang = 'zh-CN';
         } else {
-            currentLang = 'en'; // 其他語系一律預設英文
+            currentLang = 'en'; 
         }
         
-        // 同步下拉選單的顯示狀態
         document.getElementById('lang-select').value = currentLang;
         applyLanguage();
     }
 
-    // 執行翻譯轉換
     function applyLanguage() {
         const tokens = i18nTokens[currentLang];
         
-        // 1. 翻譯普通文本 (帶有 data-i18n 屬性的標籤)
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             if (tokens[key]) el.textContent = tokens[key];
         });
 
-        // 2. 翻譯輸入框提示文字 (帶有 data-i18n-holder 的標籤)
         document.querySelectorAll('[data-i18n-holder]').forEach(el => {
             const key = el.getAttribute('data-i18n-holder');
             if (tokens[key]) el.placeholder = tokens[key];
         });
 
-        // 切換語言後，刷新 QR Code（主要是更新空白時的提示字眼）
         generateQRCode();
     }
 
-    // 手動變更語言
     function changeLanguage(lang) {
         currentLang = lang;
         applyLanguage();
     }
 
-    // 切換分頁
     function switchTab(tabName, event) {
         currentTab = tabName;
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -380,7 +359,6 @@
         generateQRCode();
     }
 
-    // 處理 Logo 上傳
     function loadLogo(event) {
         const file = event.target.files[0];
         if (!file) {
@@ -399,7 +377,6 @@
         reader.readAsDataURL(file);
     }
 
-    // 組合數據
     function getFormValue() {
         switch(currentTab) {
             case 'url':
@@ -428,7 +405,6 @@
         }
     }
 
-    // 即時繪製 QR Code
     function generateQRCode() {
         const rawText = getFormValue();
         const qrcodeBox = document.getElementById('qrcode-box');
@@ -475,7 +451,6 @@
         qrcodeBox.appendChild(canvas);
     }
 
-    // 下載
     function downloadQRCode() {
         const canvas = document.querySelector('#qrcode-box canvas');
         if (!canvas) {
@@ -488,10 +463,9 @@
         link.click();
     }
 
-    // 網頁載入流程
     window.onload = function() {
-        initLanguage(); // 1. 偵測並套用語言
-        generateQRCode(); // 2. 畫出預設的 QR Code
+        initLanguage();
+        generateQRCode(); 
     };
 </script>
 
